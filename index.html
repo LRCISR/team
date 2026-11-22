@@ -30,6 +30,7 @@ h1{font-family:var(--serif);font-weight:400;font-size:28px;margin:14px 0 16px;co
 .who{display:flex;gap:6px;margin-top:10px}
 .who button,.flt button{flex:1;font:inherit;font-size:15px;padding:9px 0;border:1px solid var(--line);background:#fff;border-radius:999px;color:var(--ink)}
 .who button[aria-pressed=true],.flt button[aria-pressed=true]{background:var(--night);color:#fff;border-color:var(--night)}
+.plusAdd{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:15px;color:var(--muted)}.plusAdd input{width:20px;height:20px;accent-color:#16151E;margin:0}
 .go{width:100%;margin-top:10px;font:inherit;font-size:17px;font-weight:600;padding:13px;border:0;border-radius:9px;background:var(--gold);color:var(--night)}
 .go:disabled{opacity:.6}
 .flt{display:flex;gap:6px;margin:18px 0 10px}.flt button{font-size:13.5px;padding:7px 0}
@@ -42,6 +43,7 @@ li .by{font-size:12px;color:var(--muted);background:rgba(0,0,0,.05);padding:2px 
 .chk i{width:26px;height:26px;border:2px solid #B9B2A4;border-radius:7px;display:grid;place-items:center;font-style:normal;color:#fff;font-size:17px;background:#fff}
 li.ok .chk i{background:var(--ok);border-color:var(--ok)}
 li.ok .chk{color:var(--ok);font-weight:500}
+.pl{font:inherit;font-size:13px;font-weight:600;border:1.5px dashed #B9B2A4;background:transparent;color:#9C9586;border-radius:999px;padding:3px 9px}.pl[aria-pressed=true]{border:1.5px solid var(--night);background:var(--night);color:var(--gold-soft)}
 .del{border:0;background:none;color:#B3AC9F;font-size:20px;padding:0 2px;line-height:1}
 .del.sure{color:var(--err);font-size:13px;font-family:inherit}
 .empty{text-align:center;color:var(--muted);padding:26px 0}
@@ -72,16 +74,17 @@ li.ok .chk{color:var(--ok);font-weight:500}
     <div class="stats">
       <div class="st"><b id="sSent">0</b><span>הוזמנו</span></div>
       <div class="st g"><b id="sOk">0</b><span>נרשמו</span></div>
-      <div class="st"><b id="sPct">0%</b><span>הרשמה</span></div>
+      <div class="st g"><b id="sPpl">0</b><span>מגיעים כולל <bdi dir="ltr">+1</bdi></span></div>
     </div>
     <div class="bar"><i id="bar"></i></div>
-    <div class="tot" id="tot"></div>
+    <div class="tot"><span id="pct"></span> · <span id="tot"></span></div>
   </div></header>
 
   <main class="col">
     <form class="add" id="addForm">
       <input id="name" placeholder="שם הלקוח שהוזמן" autocomplete="off" enterkeyhint="done">
       <div class="who" id="who"><button type="button" data-v="רועי">רועי</button><button type="button" data-v="יואב">יואב</button><button type="button" data-v="רום">רום</button></div>
+      <label class="plusAdd"><input type="checkbox" id="plusAdd"> מגיע/ה עם <bdi dir="ltr">+1</bdi></label>
       <button class="go" id="addBtn" type="submit">+ הוספה</button>
       <div class="msg" id="addErr" hidden>לא נשמר, נסו שוב בעוד רגע</div>
     </form>
@@ -108,17 +111,17 @@ function apply(r){
   if(r.status==='stale'){load();return true}
   if(r.status!=='ok'){$('err').hidden=false;return false}
   $('err').hidden=true;LIST=r.list;render();
-  $('tot').textContent='סה״כ רשומים לאירוע (כולל חברים): '+r.total+' מתוך '+r.capacity;
+  $('tot').textContent='בדף ההרשמה: '+r.total+' מתוך '+r.capacity;
   return true;
 }
 function render(){
   const ok=LIST.filter(x=>x.ok).length, n=LIST.length, p=n?Math.round(ok/n*100):0;
-  $('sSent').textContent=n;$('sOk').textContent=ok;$('sPct').textContent=p+'%';$('bar').style.width=p+'%';
+  const ppl=LIST.filter(x=>x.ok).reduce((a,x)=>a+(x.plus?2:1),0);$('sSent').textContent=n;$('sOk').textContent=ok;$('sPpl').textContent=ppl;$('bar').style.width=p+'%';$('pct').textContent=p+'% מהמוזמנים נרשמו';
   let v=LIST.slice().reverse();
   if(F==='no')v=v.filter(x=>!x.ok);
   if(F==='mine')v=v.filter(x=>x.by===ME);
   v.sort((a,b)=>a.ok-b.ok);
-  $('list').innerHTML=v.map(x=>`<li class="${x.ok?'ok':'no'}" data-row="${x.row}"><span class="nm">${esc(x.name)}</span>${x.by?`<span class="by">${esc(x.by)}</span>`:''}<button class="chk" type="button" aria-pressed="${x.ok}"><i>${x.ok?'✓':''}</i>${x.ok?'נרשם':'נרשם?'}</button><button class="del" type="button" aria-label="מחיקה">×</button></li>`).join('');
+  $('list').innerHTML=v.map(x=>`<li class="${x.ok?'ok':'no'}" data-row="${x.row}"><span class="nm">${esc(x.name)}</span>${x.by?`<span class="by">${esc(x.by)}</span>`:''}<button class="pl" dir="ltr" type="button" aria-pressed="${!!x.plus}">+1</button><button class="chk" type="button" aria-pressed="${x.ok}"><i>${x.ok?'✓':''}</i>${x.ok?'נרשם':'נרשם?'}</button><button class="del" type="button" aria-label="מחיקה">×</button></li>`).join('');
   $('empty').hidden=v.length>0;
 }
 function load(){return call({type:'inv_list'}).then(apply).catch(()=>{$('err').hidden=false})}
@@ -128,11 +131,12 @@ $('who').onclick=e=>{const b=e.target.closest('button');if(b)setWho(b.dataset.v)
 $('flt').onclick=e=>{const b=e.target.closest('button');if(!b)return;F=b.dataset.f;document.querySelectorAll('#flt button').forEach(x=>x.setAttribute('aria-pressed',x===b));render()};
 $('addForm').onsubmit=e=>{e.preventDefault();const name=$('name').value.trim();if(name.length<2){$('name').focus();return}
   const btn=$('addBtn');btn.disabled=true;btn.textContent='שומר…';
-  LIST.push({row:0,name,by:ME,ok:false});render();$('name').value='';
-  const fail=()=>{LIST=LIST.filter(x=>!(x.row===0&&x.name===name));render();$('name').value=name;$('addErr').hidden=false};
+  const plus=$('plusAdd').checked;LIST.push({row:0,name,by:ME,ok:false,plus});render();$('name').value='';$('plusAdd').checked=false;
+  const fail=()=>{LIST=LIST.filter(x=>!(x.row===0&&x.name===name));render();$('name').value=name;$('plusAdd').checked=plus;$('addErr').hidden=false};
   $('addErr').hidden=true;
-  call({type:'inv_add',name,by:ME}).then(r=>{if(r.status==='ok')apply(r);else if(r.status==='pin')apply(r);else fail()}).catch(fail).finally(()=>{btn.disabled=false;btn.textContent='+ הוספה'})};
+  call({type:'inv_add',name,by:ME,plus}).then(r=>{if(r.status==='ok')apply(r);else if(r.status==='pin')apply(r);else fail()}).catch(fail).finally(()=>{btn.disabled=false;btn.textContent='+ הוספה'})};
 $('list').onclick=e=>{const li=e.target.closest('li');if(!li)return;const row=+li.dataset.row;const x=LIST.find(y=>y.row===row);if(!x||!row)return;
+  if(e.target.closest('.pl')){x.plus=!x.plus;render();call({type:'inv_set',field:'plus',row,name:x.name,value:x.plus}).then(apply);return}
   if(e.target.closest('.chk')){x.ok=!x.ok;render();call({type:'inv_set',row,name:x.name,value:x.ok}).then(apply)}
   const d=e.target.closest('.del');
   if(d){if(!d.classList.contains('sure')){d.classList.add('sure');d.textContent='למחוק?';setTimeout(()=>{if(d.isConnected){d.classList.remove('sure');d.textContent='×'}},3000);return}
